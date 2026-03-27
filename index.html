@@ -28,7 +28,6 @@
     width: 100%; padding: 12px; background: #4a6cf7; color: white;
     border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
   }
-  .login-box button:hover { background: #3a5ce5; }
   #login-error { color: #ff6b6b; font-size: 13px; margin-top: 8px; text-align: center; }
 
   /* 메인 화면 */
@@ -37,81 +36,75 @@
   /* 큰 탭 영역 */
   #big-tabs-container {
     background: #16213e; padding: 14px 20px 0;
-    border-bottom: 2px solid #0f3460;
+    border-bottom: 3px solid #0f3460;
     display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end;
   }
 
-  /* [수정] 기본 탭 스타일 - 비활성 상태일 때 더 어둡게 */
+  /* 비활성 탭 스타일 */
   .big-tab {
-    padding: 14px 28px; border-radius: 10px 10px 0 0;
-    cursor: pointer; font-size: 20px; font-weight: 500;
-    border: 2px solid transparent; border-bottom: none;
-    background: #0f3460; color: #888;
+    padding: 12px 24px; border-radius: 10px 10px 0 0;
+    cursor: pointer; font-size: 18px; font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.1); border-bottom: none;
     display: flex; align-items: center; gap: 8px;
     user-select: none; position: relative;
-    opacity: 0.5; transition: all 0.2s ease;
+    opacity: 0.4; filter: grayscale(40%) brightness(70%);
+    transition: all 0.2s ease;
   }
 
-  /* [핵심 수정] 활성 탭 스타일 - 상단 바 및 강조 효과 */
+  /* 활성 탭 스타일 - 사용자가 정한 색상 100% 반영 */
   .big-tab.active {
-    background: #1a1a2e; 
-    border-color: #0f3460;
-    border-bottom: 2px solid #1a1a2e; 
-    color: #fff !important;
-    font-size: 24px;
-    font-weight: 800;
-    margin-bottom: -2px;
-    opacity: 1;
-    z-index: 2;
-    /* 상단 하이라이트 바 추가 (JS에서 border-top-color를 제어함) */
-    border-top: 5px solid #fff; 
-    box-shadow: 0 -8px 20px rgba(0,0,0,0.4);
+    font-size: 24px; font-weight: 900;
+    opacity: 1 !important; filter: none !important;
+    margin-bottom: -3px; 
+    z-index: 5;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.4); border-bottom: none;
   }
 
-  .big-tab:hover { opacity: 0.8; }
+  .big-tab:hover { opacity: 0.8; filter: none; }
+  .big-tab.dragging { opacity: 0.2; }
+  .big-tab.drag-over { border-top: 3px solid #fff; }
 
-  .big-tab .tab-close { font-size: 14px; color: #888; cursor: pointer; padding: 0 2px; }
-  .big-tab .tab-close:hover { color: #ff6b6b; }
-  .big-tab .tab-color-btn { font-size: 14px; cursor: pointer; opacity: 0.7; }
-  .big-tab .tab-color-btn:hover { opacity: 1; }
+  .big-tab .tab-close { font-size: 14px; color: inherit; opacity: 0.5; cursor: pointer; padding: 0 2px; }
+  .big-tab .tab-close:hover { opacity: 1; color: #ff6b6b; }
+  .big-tab .tab-color-btn { font-size: 14px; cursor: pointer; opacity: 0.6; }
 
   #add-big-tab {
     padding: 14px 20px; background: none; border: none;
-    font-size: 28px; cursor: pointer; color: #888; line-height: 1;
+    font-size: 28px; cursor: pointer; color: #888;
   }
-  #add-big-tab:hover { color: #4a6cf7; }
 
   /* 20색 팔레트 팝업 */
   .color-palette {
     position: absolute; top: 100%; left: 0; z-index: 100;
-    background: #16213e; border: 1px solid #0f3460;
-    border-radius: 8px; padding: 8px; display: none;
-    grid-template-columns: repeat(5, 1fr); gap: 6px; width: 200px;
+    background: #16213e; border: 1px solid #fff;
+    border-radius: 8px; padding: 10px; display: none;
+    grid-template-columns: repeat(5, 1fr); gap: 8px; width: 210px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
   }
   .color-palette.show { display: grid; }
   .color-swatch {
     width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
-    border: 2px solid transparent;
+    border: 1px solid rgba(255,255,255,0.2);
   }
-  .color-swatch:hover { border-color: white; transform: scale(1.1); }
 
   /* 컨텐츠 영역 */
   #content-area { padding: 24px; max-width: 1200px; margin: 0 auto; }
 
-  /* 박스 영역 */
-  .box-wrapper { margin-bottom: 32px; }
+  /* 박스 영역 (드래그 기능 포함) */
+  .box-wrapper { margin-bottom: 32px; transition: all 0.2s; }
+  .box-wrapper.dragging { opacity: 0.3; }
+  .box-wrapper.drag-over { border-top: 3px solid #4a6cf7; }
   .box-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
   .box-name { font-size: 26px; font-weight: 700; color: #e0e0e0; cursor: pointer; border-bottom: 1px dashed transparent; text-align: center; }
-  .box-name:hover { border-bottom-color: #aaa; }
-  .box-name-input { font-size: 26px; font-weight: 700; border: 1px solid #4a6cf7; border-radius: 4px; padding: 2px 8px; outline: none; background: #0f3460; color: #e0e0e0; text-align: center; }
   .box-delete-btn { font-size: 13px; color: #ff6b6b; cursor: pointer; }
 
-  /* 작은 탭 */
-  .small-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0; background: #0f3460; padding: 6px 8px 0; border: 1px solid #1e4080; border-bottom: none; border-radius: 8px 8px 0 0; }
+  /* 작은 탭 (버전 관리) */
+  .small-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: #0f3460; padding: 6px 8px 0; border: 1px solid #1e4080; border-bottom: none; border-radius: 8px 8px 0 0; }
   .small-tab { padding: 4px 12px; font-size: 12px; border-radius: 6px 6px 0 0; cursor: pointer; background: #1a1a2e; color: #888; border: 1px solid #1e4080; border-bottom: none; }
-  .small-tab.active { background: #16213e; color: #e0e0e0; font-weight: 600; border-color: #1e4080; }
+  .small-tab.active { background: #16213e; color: #e0e0e0; font-weight: 600; }
 
-  /* 박스 본체 */
+  /* 박스 본체 및 액션 버튼 */
   .box-body { background: #16213e; border: 1px solid #1e4080; border-radius: 0 0 8px 8px; padding: 14px; }
   .box-content { width: 100%; min-height: 120px; border: none; outline: none; font-size: 14px; line-height: 1.6; resize: vertical; font-family: inherit; color: #e0e0e0; background: #16213e; }
   .box-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
@@ -119,15 +112,7 @@
   .btn-edit { background: #0f3460; color: #ccc; }
   .btn-save { background: #4a6cf7; color: white; }
   .btn-copy { background: #1a4a2e; color: #6fcf97; }
-  .btn:hover { opacity: 0.85; }
-
-  /* + 박스 버튼 */
   .add-box-btn { width: 100%; padding: 14px; border: 2px dashed #0f3460; background: none; border-radius: 8px; font-size: 28px; color: #555; cursor: pointer; margin-top: 4px; }
-  .add-box-btn:hover { border-color: #4a6cf7; color: #4a6cf7; }
-
-  /* 드래그 */
-  .dragging { opacity: 0.5; }
-  .drag-over { border-top: 3px solid #4a6cf7; }
 </style>
 </head>
 <body>
@@ -143,9 +128,7 @@
 </div>
 
 <div id="main-screen">
-  <div id="big-tabs-container">
-    <button id="add-big-tab" onclick="addBigTab()">+</button>
-  </div>
+  <div id="big-tabs-container"></div>
   <div id="content-area"></div>
 </div>
 
@@ -163,20 +146,7 @@
     appId: "1:576309566958:web:fc04c400e58c47c0d2c2ff"
   };
 
-  const TAB_COLORS = [
-    "#E6194B", "#3CB44B", "#FFE119", "#4363D8", "#F58231", 
-    "#911EB4", "#42D4F4", "#F032E6", "#BFEF45", "#FABEBE", 
-    "#469990", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", 
-    "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#A9A9A9"
-  ];
-
-  function isLight(hex) {
-    if (!hex) return false;
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    return (r*299 + g*587 + b*114) / 1000 > 128;
-  }
+  const TAB_COLORS = ["#E6194B", "#3CB44B", "#FFE119", "#4363D8", "#F58231", "#911EB4", "#42D4F4", "#F032E6", "#BFEF45", "#FABEBE", "#469990", "#E6BEFF", "#9A6324", "#FFFAC8", "#800000", "#AAFFC3", "#808000", "#FFD8B1", "#000075", "#A9A9A9"];
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -185,6 +155,14 @@
   let currentUser = null;
   let data = { tabs: [] };
   let activeBigTab = 0;
+
+  function isLight(hex) {
+    if (!hex) return false;
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return (r*299 + g*587 + b*114) / 1000 > 128;
+  }
 
   onAuthStateChanged(auth, async (user) => {
     if (user) { currentUser = user; await loadData(); showMain(); }
@@ -195,7 +173,7 @@
     const email = document.getElementById('email-input').value;
     const password = document.getElementById('password-input').value;
     try { await signInWithEmailAndPassword(auth, email, password); }
-    catch(e) { document.getElementById('login-error').textContent = '로그인 실패'; }
+    catch(e) { document.getElementById('login-error').textContent = '로그인 정보가 틀립니다.'; }
   };
 
   async function loadData() {
@@ -224,17 +202,9 @@
       const el = document.createElement('div');
       el.className = 'big-tab' + (isActive ? ' active' : '');
       el.draggable = true;
-      el.dataset.index = i;
-
-      /* [핵심 로직] 활성 탭일 때 상단 바 색상을 팔레트 색상으로 강조 */
-      if (isActive) {
-        el.style.backgroundColor = '#1a1a2e'; // 배경은 메인과 통일
-        el.style.borderTopColor = tab.color || '#4363D8'; // 상단 띠를 포인트 색상으로
-        el.style.color = '#fff';
-      } else {
-        el.style.backgroundColor = '#0f3460'; // 비활성 탭은 어둡게
-        el.style.color = '#888';
-      }
+      
+      el.style.backgroundColor = tab.color || '#0f3460';
+      el.style.color = isLight(tab.color || '#0f3460') ? '#1a1a2e' : '#fff';
 
       const palette = document.createElement('div');
       palette.className = 'color-palette';
@@ -266,6 +236,24 @@
       el.appendChild(closeBtn);
 
       el.addEventListener('click', () => { activeBigTab = i; renderAll(); });
+      
+      // 큰 탭 드래그 로직
+      el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('tab-index', i); el.classList.add('dragging'); });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData('tab-index'));
+        const to = i;
+        if (from !== to) {
+          const moved = data.tabs.splice(from, 1)[0];
+          data.tabs.splice(to, 0, moved);
+          activeBigTab = to;
+          saveData(); renderAll();
+        }
+      });
+
       container.appendChild(el);
     });
 
@@ -274,35 +262,16 @@
     container.appendChild(addBtn);
   }
 
-  /* 나머지 자바스크립트 함수들 (addBigTab, renderContent 등 원본 유지) */
-  window.addBigTab = function() {
-    const name = prompt('탭 이름:');
-    if (!name) return;
-    data.tabs.push({ id: Date.now(), name, color: '#4363D8', boxes: [] });
-    activeBigTab = data.tabs.length - 1;
-    saveData(); renderAll();
-  };
-
-  window.deleteBigTab = function(i) {
-    if (!confirm('삭제할까요?')) return;
-    data.tabs.splice(i, 1);
-    activeBigTab = Math.max(0, Math.min(activeBigTab, data.tabs.length - 1));
-    saveData(); renderAll();
-  };
-
-  window.renameBigTab = function(i) {
-    const name = prompt('새 이름:', data.tabs[i].name);
-    if (!name) return;
-    data.tabs[i].name = name;
-    saveData(); renderAll();
-  };
-
   function renderContent() {
     const area = document.getElementById('content-area');
     area.innerHTML = '';
-    if (!data.tabs.length || !data.tabs[activeBigTab]) return;
     const tab = data.tabs[activeBigTab];
-    tab.boxes.forEach((box, bi) => { area.appendChild(createBoxEl(box, bi, tab)); });
+    if (!tab) return;
+
+    tab.boxes.forEach((box, bi) => {
+      area.appendChild(createBoxEl(box, bi, tab));
+    });
+
     const addBtn = document.createElement('button');
     addBtn.className = 'add-box-btn'; addBtn.textContent = '+';
     addBtn.onclick = () => addBox(tab);
@@ -312,53 +281,136 @@
   function createBoxEl(box, bi, tab) {
     const wrapper = document.createElement('div');
     wrapper.className = 'box-wrapper';
+    wrapper.draggable = true;
+
+    // 박스 드래그 로직
+    wrapper.addEventListener('dragstart', (e) => { e.dataTransfer.setData('box-index', bi); wrapper.classList.add('dragging'); });
+    wrapper.addEventListener('dragend', () => wrapper.classList.remove('dragging'));
+    wrapper.addEventListener('dragover', (e) => { e.preventDefault(); wrapper.classList.add('drag-over'); });
+    wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
+    wrapper.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const from = parseInt(e.dataTransfer.getData('box-index'));
+      const to = bi;
+      if (from !== to) {
+        const moved = tab.boxes.splice(from, 1)[0];
+        tab.boxes.splice(to, 0, moved);
+        saveData(); renderContent();
+      }
+    });
+
     const activeVersion = box.versions && box.versions.length > 0 ? box.versions.length - 1 : 0;
-    
+
     const nameRow = document.createElement('div');
     nameRow.className = 'box-name-row';
     const nameSpan = document.createElement('span');
     nameSpan.className = 'box-name';
     nameSpan.textContent = box.name || '박스 이름';
     nameSpan.ondblclick = () => renameBox(nameSpan, tab, box);
+    const delBtn = document.createElement('span');
+    delBtn.className = 'box-delete-btn';
+    delBtn.textContent = '🗑 삭제';
+    delBtn.onclick = () => deleteBox(tab, box);
     nameRow.appendChild(nameSpan);
+    nameRow.appendChild(delBtn);
     wrapper.appendChild(nameRow);
+
+    const smallTabs = document.createElement('div');
+    smallTabs.className = 'small-tabs';
+    if (box.versions) {
+      box.versions.forEach((v, vi) => {
+        const st = document.createElement('div');
+        st.className = 'small-tab' + (vi === activeVersion ? ' active' : '');
+        st.textContent = v.date;
+        st.onclick = () => showVersion(box, vi, wrapper);
+        smallTabs.appendChild(st);
+      });
+    }
+    wrapper.appendChild(smallTabs);
 
     const body = document.createElement('div');
     body.className = 'box-body';
     const textarea = document.createElement('textarea');
     textarea.className = 'box-content';
+    textarea.readOnly = true;
     textarea.value = box.versions && box.versions.length ? box.versions[activeVersion].content : '';
     body.appendChild(textarea);
-    
+
     const actions = document.createElement('div');
     actions.className = 'box-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-edit'; editBtn.textContent = '✏️ 수정';
+    editBtn.onclick = () => { textarea.readOnly = false; textarea.focus(); };
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn btn-save';
-    saveBtn.textContent = '💾 저장';
+    saveBtn.className = 'btn btn-save'; saveBtn.textContent = '💾 저장';
     saveBtn.onclick = () => saveVersion(tab, box, textarea.value);
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-copy'; copyBtn.textContent = '📋 복사';
+    copyBtn.onclick = () => { navigator.clipboard.writeText(textarea.value); alert('복사완료!'); };
+
+    actions.appendChild(editBtn);
     actions.appendChild(saveBtn);
+    actions.appendChild(copyBtn);
     body.appendChild(actions);
     wrapper.appendChild(body);
 
     return wrapper;
   }
 
+  function showVersion(box, vi, wrapper) {
+    const tabs = wrapper.querySelectorAll('.small-tab');
+    tabs.forEach((t, i) => t.classList.toggle('active', i === vi));
+    const textarea = wrapper.querySelector('.box-content');
+    textarea.value = box.versions[vi].content;
+    textarea.readOnly = true;
+  }
+
   function saveVersion(tab, box, content) {
-    const dateLabel = new Date().toISOString().slice(2,10).replace(/-/g,'');
+    const now = new Date();
+    const date = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    const sameDay = box.versions ? box.versions.filter(v => v.date.startsWith(date)) : [];
+    const dateLabel = `${date}-${sameDay.length + 1}`;
     if (!box.versions) box.versions = [];
     box.versions.push({ date: dateLabel, content });
+    if (box.versions.length > 10) box.versions.shift();
     saveData(); renderContent();
   }
 
+  window.addBigTab = function() {
+    const name = prompt('탭 이름:');
+    if (!name) return;
+    data.tabs.push({ id: Date.now(), name, color: '#4363D8', boxes: [] });
+    activeBigTab = data.tabs.length - 1;
+    saveData(); renderAll();
+  };
+
+  window.deleteBigTab = function(i) {
+    if (confirm('삭제하시겠습니까?')) {
+      data.tabs.splice(i, 1);
+      activeBigTab = Math.max(0, Math.min(activeBigTab, data.tabs.length - 1));
+      saveData(); renderAll();
+    }
+  };
+
+  window.renameBigTab = function(i) {
+    const name = prompt('새 이름:', data.tabs[i].name);
+    if (name) { data.tabs[i].name = name; saveData(); renderAll(); }
+  };
+
   function addBox(tab) {
-    if (!tab.boxes) tab.boxes = [];
     tab.boxes.push({ id: 'box_' + Date.now(), name: '새 박스', versions: [] });
     saveData(); renderContent();
   }
 
+  function deleteBox(tab, box) {
+    if (confirm('삭제하시겠습니까?')) {
+      tab.boxes = tab.boxes.filter(b => b.id !== box.id);
+      saveData(); renderContent();
+    }
+  }
+
   function renameBox(span, tab, box) {
     const input = document.createElement('input');
-    input.className = 'box-name-input';
     input.value = box.name;
     span.replaceWith(input);
     input.focus();
