@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프롬프트 메모</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+
+  /* 로그인 화면 */
+  #login-screen {
+    display: flex; justify-content: center; align-items: center;
+    height: 100vh; background: #f0f2f5;
+  }
+  .login-box {
+    background: white; padding: 40px; border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px;
+  }
+  .login-box h2 { margin-bottom: 24px; text-align: center; color: #333; }
+  .login-box input {
+    width: 100%; padding: 10px 14px; margin-bottom: 14px;
+    border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+  }
+  .login-box button {
+    width: 100%; padding: 12px; background: #4a6cf7; color: white;
+    border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+  }
+  .login-box button:hover { background: #3a5ce5; }
+  #login-error { color: red; font-size: 13px; margin-top: 8px; text-align: center; }
+
+  /* 메인 화면 */
+  #main-screen { display: none; }
+
+  /* 큰 탭 영역 */
+  #big-tabs-container {
+    background: white; padding: 10px 16px 0;
+    border-bottom: 2px solid #e0e0e0;
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-end;
+  }
+  .big-tab {
+    padding: 8px 16px; border-radius: 8px 8px 0 0;
+    cursor: pointer; font-size: 14px; font-weight: 500;
+    border: 2px solid transparent; border-bottom: none;
+    background: #f0f2f5; color: #555;
+    display: flex; align-items: center; gap: 6px;
+    user-select: none;
+  }
+  .big-tab.active {
+    background: white; border-color: #e0e0e0;
+    border-bottom: 2px solid white; color: #333;
+    margin-bottom: -2px;
+  }
+  .big-tab .tab-close {
+    font-size: 12px; color: #999; cursor: pointer; padding: 0 2px;
+  }
+  .big-tab .tab-close:hover { color: #f44; }
+  #add-big-tab {
+    padding: 8px 14px; background: none; border: none;
+    font-size: 20px; cursor: pointer; color: #888; line-height: 1;
+  }
+  #add-big-tab:hover { color: #4a6cf7; }
+
+  /* 컨텐츠 영역 */
+  #content-area { padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+  /* 박스 영역 */
+  .box-wrapper { margin-bottom: 24px; }
+  .box-name-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .box-name {
+    font-size: 15px; font-weight: 600; color: #333;
+    cursor: pointer; border-bottom: 1px dashed transparent;
+  }
+  .box-name:hover { border-bottom-color: #aaa; }
+  .box-name-input {
+    font-size: 15px; font-weight: 600; border: 1px solid #4a6cf7;
+    border-radius: 4px; padding: 2px 8px; outline: none;
+  }
+  .box-delete-btn {
+    font-size: 12px; color: #f44; cursor: pointer; margin-left: auto;
+  }
+
+  /* 작은 탭 */
+  .small-tabs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin-bottom: 0; background: #f8f9fa;
+    padding: 6px 8px 0; border: 1px solid #ddd;
+    border-bottom: none; border-radius: 8px 8px 0 0;
+  }
+  .small-tab {
+    padding: 4px 12px; font-size: 12px; border-radius: 6px 6px 0 0;
+    cursor: pointer; background: #e9ecef; color: #666;
+    border: 1px solid #ddd; border-bottom: none;
+  }
+  .small-tab.active {
+    background: white; color: #333; font-weight: 600;
+    border-color: #ddd;
+  }
+
+  /* 박스 본체 */
+  .box-body {
+    background: white; border: 1px solid #ddd;
+    border-radius: 0 0 8px 8px; padding: 12px;
+  }
+  .box-content {
+    width: 100%; min-height: 120px; border: none; outline: none;
+    font-size: 14px; line-height: 1.6; resize: vertical;
+    font-family: inherit; color: #333;
+    background: white;
+  }
+  .box-content[readonly] { color: #555; }
+
+  .box-actions {
+    display: flex; gap: 8px; margin-top: 10px; align-items: center;
+  }
+  .btn {
+    padding: 6px 14px; border-radius: 6px; border: none;
+    font-size: 13px; cursor: pointer; font-weight: 500;
+  }
+  .btn-edit { background: #f0f2f5; color: #444; }
+  .btn-save { background: #4a6cf7; color: white; }
+  .btn-copy { background: #e8f5e9; color: #2e7d32; }
+  .btn:hover { opacity: 0.85; }
+
+  /* + 박스 버튼 */
+  .add-box-btn {
+    width: 100%; padding: 14px; border: 2px dashed #ccc;
+    background: none; border-radius: 8px; font-size: 24px;
+    color: #bbb; cursor: pointer; margin-top: 4px;
+  }
+  .add-box-btn:hover { border-color: #4a6cf7; color: #4a6cf7; }
+
+  /* 드래그 */
+  .dragging { opacity: 0.5; }
+  .drag-over { border-top: 3px solid #4a6cf7; }
+</style>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🔐 프롬프트 메모</h2>
+    <input type="email" id="email-input" placeholder="이메일" />
+    <input type="password" id="password-input" placeholder="비밀번호" />
+    <button onclick="login()">로그인</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<!-- 메인 화면 -->
+<div id="main-screen">
+  <div id="big-tabs-container">
+    <button id="add-big-tab" onclick="addBigTab()">+</button>
+  </div>
+  <div id="content-area"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDD1C-WisN572nP3D2oVm5b5cVnZg7zOqQ",
+    authDomain: "j-prompt-memo.firebaseapp.com",
+    projectId: "j-prompt-memo",
+    storageBucket: "j-prompt-memo.firebasestorage.app",
+    messagingSenderId: "576309566958",
+    appId: "1:576309566958:web:fc04c400e58c47c0d2c2ff"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+  let data = { tabs: [] };
+  let activeBigTab = 0;
+
+  // 로그인 상태 감지
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      await loadData();
+      showMain();
+    } else {
+      showLogin();
+    }
+  });
+
+  // 로그인
+  window.login = async function() {
+    const email = document.getElementById('email-input').value;
+    const password = document.getElementById('password-input').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch(e) {
+      document.getElementById('login-error').textContent = '이메일 또는 비밀번호가 틀렸습니다.';
+    }
+  };
+
+  // 데이터 불러오기
+  async function loadData() {
+    const ref = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      data = snap.data();
+    } else {
+      data = { tabs: [{ id: Date.now(), name: '탭 1', color: '#4a6cf7', boxes: [] }] };
+      await saveData();
+    }
+  }
+
+  // 데이터 저장
+  async function saveData() {
+    const ref = doc(db, 'users', currentUser.uid);
+    await setDoc(ref, data);
+  }
+
+  function showLogin() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('main-screen').style.display = 'none';
+  }
+
+  function showMain() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'block';
+    renderAll();
+  }
+
+  function renderAll() {
+    renderBigTabs();
+    renderContent();
+  }
+
+  // 큰 탭 렌더링
+  function renderBigTabs() {
+    const container = document.getElementById('big-tabs-container');
+    container.innerHTML = '';
+
+    data.tabs.forEach((tab, i) => {
+      const el = document.createElement('div');
+      el.className = 'big-tab' + (i === activeBigTab ? ' active' : '');
+      el.draggable = true;
+      el.dataset.index = i;
+      el.style.borderColor = i === activeBigTab ? tab.color : 'transparent';
+      el.style.color = i === activeBigTab ? tab.color : '#555';
+
+      el.innerHTML = `<span class="tab-label" ondblclick="renameBigTab(${i})">${tab.name}</span>
+        <span class="tab-close" onclick="deleteBigTab(${i})">✕</span>`;
+      el.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('tab-close')) {
+          activeBigTab = i;
+          renderAll();
+        }
+      });
+
+      // 드래그
+      el.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', i);
+        el.classList.add('dragging');
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drag-over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const from = parseInt(e.dataTransfer.getData('text/plain'));
+        const to = i;
+        if (from !== to) {
+          const moved = data.tabs.splice(from, 1)[0];
+          data.tabs.splice(to, 0, moved);
+          activeBigTab = to;
+          saveData();
+          renderAll();
+        }
+      });
+
+      container.appendChild(el);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.id = 'add-big-tab';
+    addBtn.textContent = '+';
+    addBtn.onclick = addBigTab;
+    container.appendChild(addBtn);
+  }
+
+  // 큰 탭 추가
+  window.addBigTab = function() {
+    const name = prompt('탭 이름을 입력하세요:');
+    if (!name) return;
+    data.tabs.push({ id: Date.now(), name, color: '#4a6cf7', boxes: [] });
+    activeBigTab = data.tabs.length - 1;
+    saveData();
+    renderAll();
+  };
+
+  // 큰 탭 삭제
+  window.deleteBigTab = function(i) {
+    if (!confirm('탭을 삭제할까요?')) return;
+    data.tabs.splice(i, 1);
+    if (activeBigTab >= data.tabs.length) activeBigTab = data.tabs.length - 1;
+    if (activeBigTab < 0) activeBigTab = 0;
+    saveData();
+    renderAll();
+  };
+
+  // 큰 탭 이름 변경
+  window.renameBigTab = function(i) {
+    const name = prompt('새 탭 이름:', data.tabs[i].name);
+    if (!name) return;
+    data.tabs[i].name = name;
+    saveData();
+    renderAll();
+  };
+
+  // 컨텐츠 렌더링
+  function renderContent() {
+    const area = document.getElementById('content-area');
+    area.innerHTML = '';
+    if (!data.tabs.length) return;
+
+    const tab = data.tabs[activeBigTab];
+    if (!tab) return;
+
+    tab.boxes.forEach((box, bi) => {
+      area.appendChild(createBoxEl(box, bi, tab));
+    });
+
+    // + 버튼
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-box-btn';
+    addBtn.textContent = '+';
+    addBtn.onclick = () => addBox(tab);
+    area.appendChild(addBtn);
+  }
+
+  function createBoxEl(box, bi, tab) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'box-wrapper';
+    wrapper.draggable = true;
+    wrapper.dataset.index = bi;
+
+    // 드래그 (박스 순서)
+    wrapper.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('box-index', bi);
+      wrapper.classList.add('dragging');
+    });
+    wrapper.addEventListener('dragend', () => wrapper.classList.remove('dragging'));
+    wrapper.addEventListener('dragover', (e) => { e.preventDefault(); wrapper.classList.add('drag-over'); });
+    wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
+    wrapper.addEventListener('drop', (e) => {
+      e.preventDefault();
+      wrapper.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('box-index'));
+      const to = bi;
+      if (from !== to) {
+        const moved = tab.boxes.splice(from, 1)[0];
+        tab.boxes.splice(to, 0, moved);
+        saveData();
+        renderContent();
+      }
+    });
+
+    const activeVersion = box.versions ? box.versions.length - 1 : 0;
+
+    // 박스 이름
+    const nameRow = document.createElement('div');
+    nameRow.className = 'box-name-row';
+    nameRow.innerHTML = `<span class="box-name" ondblclick="renameBox(event, '${tab.id}', '${box.id}')">${box.name || '박스 이름'}</span>
+      <span class="box-delete-btn" onclick="deleteBox('${tab.id}', '${box.id}')">🗑 삭제</span>`;
+    wrapper.appendChild(nameRow);
+
+    // 작은 탭
+    const smallTabs = document.createElement('div');
+    smallTabs.className = 'small-tabs';
+    if (box.versions) {
+      box.versions.forEach((v, vi) => {
+        const st = document.createElement('div');
+        st.className = 'small-tab' + (vi === activeVersion ? ' active' : '');
+        st.textContent = v.date;
+        st.onclick = () => showVersion(box, vi, wrapper);
+        smallTabs.appendChild(st);
+      });
+    }
+    wrapper.appendChild(smallTabs);
+
+    // 박스 본체
+    const body = document.createElement('div');
+    body.className = 'box-body';
+    const textarea = document.createElement('textarea');
+    textarea.className = 'box-content';
+    textarea.readOnly = true;
+    textarea.value = box.versions && box.versions.length ? box.versions[activeVersion].content : '';
+    body.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'box-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-edit';
+    editBtn.textContent = '✏️ 수정';
+    editBtn.onclick = () => { textarea.readOnly = false; textarea.focus(); };
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-save';
+    saveBtn.textContent = '💾 저장';
+    saveBtn.onclick = () => saveVersion(tab, box, textarea.value);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-copy';
+    copyBtn.textContent = '📋 복사';
+    copyBtn.onclick = () => { navigator.clipboard.writeText(textarea.value); alert('복사됐어요!'); };
+
+    actions.appendChild(editBtn);
+    actions.appendChild(saveBtn);
+    actions.appendChild(copyBtn);
+    body.appendChild(actions);
+    wrapper.appendChild(body);
+
+    return wrapper;
+  }
+
+  function showVersion(box, vi, wrapper) {
+    const tabs = wrapper.querySelectorAll('.small-tab');
+    tabs.forEach((t, i) => t.classList.toggle('active', i === vi));
+    const textarea = wrapper.querySelector('.box-content');
+    textarea.value = box.versions[vi].content;
+    textarea.readOnly = true;
+  }
+
+  // 버전 저장
+  function saveVersion(tab, box, content) {
+    const now = new Date();
+    const date = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    const sameDay = box.versions ? box.versions.filter(v => v.date.startsWith(date)) : [];
+    const dateLabel = `${date}-${sameDay.length + 1}`;
+
+    if (!box.versions) box.versions = [];
+    box.versions.push({ date: dateLabel, content });
+    if (box.versions.length > 10) box.versions.shift();
+
+    saveData();
+    renderContent();
+  }
+
+  // 박스 추가
+  function addBox(tab) {
+    tab.boxes.push({ id: 'box_' + Date.now(), name: '새 박스', versions: [] });
+    saveData();
+    renderContent();
+  }
+
+  // 박스 삭제
+  window.deleteBox = function(tabId, boxId) {
+    if (!confirm('박스를 삭제할까요?')) return;
+    const tab = data.tabs.find(t => t.id == tabId);
+    if (!tab) return;
+    tab.boxes = tab.boxes.filter(b => b.id !== boxId);
+    saveData();
+    renderContent();
+  };
+
+  // 박스 이름 변경
+  window.renameBox = function(e, tabId, boxId) {
+    const span = e.target;
+    const tab = data.tabs.find(t => t.id == tabId);
+    const box = tab.boxes.find(b => b.id === boxId);
+    const input = document.createElement('input');
+    input.className = 'box-name-input';
+    input.value = box.name;
+    span.replaceWith(input);
+    input.focus();
+    input.onblur = () => {
+      box.name = input.value;
+      saveData();
+      renderContent();
+    };
+  };
+
+</script>
+</body>
+</html>
