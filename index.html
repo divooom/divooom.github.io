@@ -38,6 +38,7 @@
     background: #16213e; padding: 14px 20px 0;
     border-bottom: 3px solid #0f3460;
     display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end;
+    position: sticky; top: 0; z-index: 50; 
   }
 
   /* 비활성 탭 스타일 */
@@ -346,7 +347,7 @@
     saveBtn.onclick = () => saveVersion(tab, box, textarea.value);
     const copyBtn = document.createElement('button');
     copyBtn.className = 'btn btn-copy'; copyBtn.textContent = '📋 복사';
-    copyBtn.onclick = () => { navigator.clipboard.writeText(textarea.value); alert('복사완료!'); };
+    copyBtn.onclick = () => { navigator.clipboard.writeText(textarea.value); copyBtn.textContent = '✅ 복사됨!'; setTimeout(() => { copyBtn.textContent = '📋 복사'; }, 1500); };
 
     actions.appendChild(editBtn);
     actions.appendChild(saveBtn);
