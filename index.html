@@ -114,6 +114,12 @@
   .btn-save { background: #4a6cf7; color: white; }
   .btn-copy { background: #ff372d; color: #fff721; }
   .add-box-btn { width: 100%; padding: 14px; border: 2px dashed #0f3460; background: none; border-radius: 8px; font-size: 28px; color: #555; cursor: pointer; margin-top: 4px; }
+
+  #save-status { position: fixed; right: 16px; bottom: 16px; z-index: 200; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; display: none; box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+  #save-status.saving { display: block; background: #f5a623; color: #1a1a2e; }
+  #save-status.saved { display: block; background: #3cb44b; color: #fff; }
+  #save-status.error { display: block; background: #e6194b; color: #fff; cursor: pointer; }
+  .box-content.dirty { box-shadow: inset 3px 0 0 #f5a623; }
 </style>
 </head>
 <body>
@@ -128,6 +134,8 @@
   </div>
 </div>
 
+<div id="save-status"></div>
+
 <div id="main-screen">
   <div id="big-tabs-container"></div>
   <div id="content-area"></div>
@@ -136,7 +144,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+  import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc, getDocFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDDlC-WisN572nP3D2oVm5b5cVnZg7zOqQ",
@@ -151,7 +159,9 @@
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
 
   let currentUser = null;
   let data = { tabs: [] };
@@ -177,17 +187,66 @@
     catch(e) { document.getElementById('login-error').textContent = '로그인 정보가 틀립니다.'; }
   };
 
-  async function loadData() {
+  // ===== 저장 상태 표시 =====
+  const statusEl = document.getElementById('save-status');
+  let pendingSaves = 0;
+  let statusTimer = null;
+  function setStatus(kind, text) {
+    clearTimeout(statusTimer);
+    statusEl.className = kind;
+    statusEl.textContent = text;
+    if (kind === 'saved') statusTimer = setTimeout(() => { statusEl.className = ''; }, 2000);
+  }
+  statusEl.onclick = () => { if (statusEl.classList.contains('error')) saveData(); };
+
+  async function loadData(forceServer) {
     const ref = doc(db, 'users', currentUser.uid);
-    const snap = await getDoc(ref);
-    if (snap.exists()) { data = snap.data(); }
+    let snap;
+    try { snap = forceServer ? await getDocFromServer(ref) : await getDoc(ref); }
+    catch (e) { if (forceServer) throw e; snap = await getDoc(ref); }
+    if (snap.exists()) { data = snap.data(); if (!data.tabs) data.tabs = []; }
     else { data = { tabs: [{ id: Date.now(), name: '탭 1', color: '#4363D8', boxes: [] }] }; await saveData(); }
   }
 
+  // 저장: 서버 확인까지 기다리고, 실패하면 빨간 알림 (클릭하면 재시도)
   async function saveData() {
     const ref = doc(db, 'users', currentUser.uid);
-    await setDoc(ref, data);
+    pendingSaves++;
+    setStatus('saving', '💾 저장 중…');
+    try {
+      await Promise.race([
+        setDoc(ref, JSON.parse(JSON.stringify(data))),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
+      ]);
+      pendingSaves--;
+      if (pendingSaves === 0) setStatus('saved', '✅ 저장됨');
+      return true;
+    } catch (e) {
+      pendingSaves--;
+      console.error('저장 실패', e);
+      setStatus('error', '❌ 저장 실패 (클릭하면 재시도)');
+      return false;
+    }
   }
+
+  // ===== 안 저장된 수정 내용 보호 =====
+  function hasDirty() { return document.querySelectorAll('.box-content.dirty').length > 0; }
+  window.addEventListener('beforeunload', (e) => {
+    if (pendingSaves > 0 || hasDirty()) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // ===== 절전/탭 복귀 시 최신 데이터 다시 불러오기 =====
+  let refreshing = false;
+  async function refreshFromServer() {
+    if (!currentUser || refreshing || pendingSaves > 0 || hasDirty()) return;
+    refreshing = true;
+    try { await loadData(true); renderAll(); setStatus('saved', '🔄 최신 데이터로 갱신됨'); }
+    catch (e) { console.warn('갱신 실패', e); }
+    refreshing = false;
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFromServer(); });
+  window.addEventListener('online', refreshFromServer);
+  window.addEventListener('focus', refreshFromServer);
 
   function showLogin() { document.getElementById('login-screen').style.display = 'flex'; document.getElementById('main-screen').style.display = 'none'; }
   function showMain() { document.getElementById('login-screen').style.display = 'none'; document.getElementById('main-screen').style.display = 'block'; renderAll(); }
@@ -342,9 +401,10 @@
     const editBtn = document.createElement('button');
     editBtn.className = 'btn btn-edit'; editBtn.textContent = '✏️ 수정';
     editBtn.onclick = () => { textarea.readOnly = false; textarea.focus(); };
+    textarea.addEventListener('input', () => textarea.classList.add('dirty'));
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn btn-save'; saveBtn.textContent = '💾 저장';
-    saveBtn.onclick = () => saveVersion(tab, box, textarea.value);
+    saveBtn.onclick = () => { textarea.classList.remove('dirty'); saveVersion(tab, box, textarea.value); };
     const copyBtn = document.createElement('button');
     copyBtn.className = 'btn btn-copy'; copyBtn.textContent = '📋 복사';
     copyBtn.onclick = () => { navigator.clipboard.writeText(textarea.value); copyBtn.textContent = '✅ 복사됨!'; setTimeout(() => { copyBtn.textContent = '📋 복사'; }, 1500); };
