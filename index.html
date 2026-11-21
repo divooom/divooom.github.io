@@ -120,6 +120,11 @@
   #save-status.saved { display: block; background: #3cb44b; color: #fff; }
   #save-status.error { display: block; background: #e6194b; color: #fff; cursor: pointer; }
   .box-content.dirty { box-shadow: inset 3px 0 0 #f5a623; }
+
+  #save-all-btn { align-self: center; margin: 0 0 8px 12px; padding: 9px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; background: #4a6cf7; color: #fff; }
+  #save-all-btn.saving { background: #f5a623; color: #1a1a2e; }
+  #save-all-btn.ok { background: #3cb44b; color: #fff; }
+  #save-all-btn.fail { background: #e6194b; color: #fff; }
 </style>
 </head>
 <body>
@@ -229,6 +234,32 @@
     }
   }
 
+  // ===== 전체 저장 버튼 =====
+  let saveAllState = 'idle';
+  let saveAllTimer = null;
+  const SAVE_ALL_LABELS = { idle: '💾 전체 저장', saving: '⏳ 저장 중…', ok: '✅ 저장됨', fail: '❌ 저장 실패 (다시 누르기)' };
+  function applySaveAllBtn() {
+    const b = document.getElementById('save-all-btn');
+    if (!b) return;
+    b.textContent = SAVE_ALL_LABELS[saveAllState];
+    b.className = saveAllState === 'idle' ? '' : saveAllState;
+  }
+  async function saveAll() {
+    if (!currentUser || saveAllState === 'saving') return;
+    clearTimeout(saveAllTimer);
+    saveAllState = 'saving'; applySaveAllBtn();
+    let added = false;
+    document.querySelectorAll('.box-content.dirty').forEach(ta => {
+      if (ta._box) { pushVersion(ta._box, ta.value); added = true; }
+      ta.classList.remove('dirty');
+    });
+    const ok = await saveData();
+    saveAllState = ok ? 'ok' : 'fail';
+    if (added) renderContent();
+    applySaveAllBtn();
+    if (ok) saveAllTimer = setTimeout(() => { saveAllState = 'idle'; applySaveAllBtn(); }, 2500);
+  }
+
   // ===== 안 저장된 수정 내용 보호 =====
   function hasDirty() { return document.querySelectorAll('.box-content.dirty').length > 0; }
   window.addEventListener('beforeunload', (e) => {
@@ -320,6 +351,12 @@
     const addBtn = document.createElement('button');
     addBtn.id = 'add-big-tab'; addBtn.textContent = '+'; addBtn.onclick = addBigTab;
     container.appendChild(addBtn);
+
+    const saveAllBtn = document.createElement('button');
+    saveAllBtn.id = 'save-all-btn';
+    saveAllBtn.onclick = saveAll;
+    container.appendChild(saveAllBtn);
+    applySaveAllBtn();
   }
 
   function renderContent() {
@@ -393,6 +430,7 @@
     const textarea = document.createElement('textarea');
     textarea.className = 'box-content';
     textarea.readOnly = true;
+    textarea._box = box;
     textarea.value = box.versions && box.versions.length ? box.versions[activeVersion].content : '';
     body.appendChild(textarea);
 
@@ -427,6 +465,11 @@
   }
 
   function saveVersion(tab, box, content) {
+    pushVersion(box, content);
+    saveData(); renderContent();
+  }
+
+  function pushVersion(box, content) {
     const now = new Date();
     const date = `${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
     const sameDay = box.versions ? box.versions.filter(v => v.date.startsWith(date)) : [];
@@ -434,7 +477,6 @@
     if (!box.versions) box.versions = [];
     box.versions.push({ date: dateLabel, content });
     if (box.versions.length > 10) box.versions.shift();
-    saveData(); renderContent();
   }
 
   window.addBigTab = function() {
