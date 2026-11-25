@@ -125,7 +125,7 @@
   #save-all-btn.saving { background: #f5a623; color: #1a1a2e; }
   #save-all-btn.ok { background: #3cb44b; color: #fff; }
   #save-all-btn.fail { background: #e6194b; color: #fff; }
-  #backup-btn { align-self: center; margin: 0 0 8px 8px; padding: 9px 14px; border: 1px solid #4a6cf7; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: none; color: #9db0ff; }
+  #backup-btn, #restore-btn { align-self: center; margin: 0 0 8px 8px; padding: 9px 14px; border: 1px solid #4a6cf7; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: none; color: #9db0ff; }
 </style>
 </head>
 <body>
@@ -216,6 +216,86 @@
     return JSON.parse(await new Response(stream).text());
   }
 
+  // ===== 버전 차이 저장 BEGIN =====
+  // 화면에서는 버전마다 전체 글을 그대로 쓰고, 서버에 저장할 때만
+  // "첫 버전 전체 + 이후 버전은 바뀐 줄만" 형태로 줄여서 저장한다.
+  function diffLines(oldText, newText) {
+    const a = oldText.split('\n'), b = newText.split('\n');
+    const max = Math.min(a.length, b.length);
+    let p = 0;
+    while (p < max && a[p] === b[p]) p++;
+    let s = 0;
+    while (s < max - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
+    const am = a.slice(p, a.length - s), bm = b.slice(p, b.length - s);
+    const n = am.length, m = bm.length;
+    if (n === 0 && m === 0) return [];
+    if (n === 0 || m === 0 || n * m > 4e6) return [[p, n, bm]];
+    const W = m + 1;
+    const dp = new Uint32Array((n + 1) * W);
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        dp[i * W + j] = am[i] === bm[j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+      }
+    }
+    const hunks = [];
+    let i = 0, j = 0, cur = null;
+    while (i < n || j < m) {
+      if (i < n && j < m && am[i] === bm[j]) { if (cur) { hunks.push(cur); cur = null; } i++; j++; }
+      else if (j >= m || (i < n && dp[(i + 1) * W + j] >= dp[i * W + j + 1])) { if (!cur) cur = [p + i, 0, []]; cur[1]++; i++; }
+      else { if (!cur) cur = [p + i, 0, []]; cur[2].push(bm[j]); j++; }
+    }
+    if (cur) hunks.push(cur);
+    return hunks;
+  }
+  function applyDelta(oldText, hunks) {
+    const a = oldText.split('\n'), out = [];
+    let pos = 0;
+    for (const [i, del, ins] of hunks) {
+      for (; pos < i; pos++) out.push(a[pos]);
+      for (const l of ins) out.push(l);
+      pos = i + del;
+    }
+    for (; pos < a.length; pos++) out.push(a[pos]);
+    return out.join('\n');
+  }
+  // 저장용으로 변환 (화면 데이터는 건드리지 않고 복사본만 만든다)
+  function encodeData(src) {
+    const out = JSON.parse(JSON.stringify(src));
+    for (const tab of out.tabs || []) for (const box of tab.boxes || []) {
+      const vs = box.versions;
+      if (!vs || vs.length < 2) continue;
+      const fulls = vs.map(v => v.content);
+      for (let i = 1; i < vs.length; i++) {
+        const prev = fulls[i - 1], cur = fulls[i];
+        if (typeof prev !== 'string' || typeof cur !== 'string') continue;
+        const delta = diffLines(prev, cur);
+        if (JSON.stringify(delta).length >= cur.length * 0.6) continue;   // 줄여지지 않으면 전체 그대로 저장
+        if (applyDelta(prev, delta) !== cur) continue;                    // 복원 결과가 다르면 전체 그대로 저장
+        delete vs[i].content;
+        vs[i].delta = delta;
+      }
+    }
+    return out;
+  }
+  // 불러올 때 원래 형태로 복원 (전체 글로 저장된 예전 데이터는 그대로 통과)
+  function decodeData(obj) {
+    for (const tab of obj.tabs || []) for (const box of tab.boxes || []) {
+      const vs = box.versions;
+      if (!vs) continue;
+      for (let i = 0; i < vs.length; i++) {
+        if (vs[i].delta) {
+          vs[i].content = applyDelta(vs[i - 1].content, vs[i].delta);
+          delete vs[i].delta;
+        }
+      }
+    }
+    return obj;
+  }
+  function stableStringify(o) {
+    return JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v)) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
+  }
+  // ===== 버전 차이 저장 END =====
+
   async function loadData(forceServer) {
     const ref = doc(db, 'users', currentUser.uid);
     let snap;
@@ -223,7 +303,7 @@
     catch (e) { if (forceServer) throw e; snap = await getDoc(ref); }
     if (snap.exists()) {
       const d = snap.data();
-      data = d.z ? await unpack(d.z.toUint8Array()) : d;   // 압축본 또는 예전 형식 모두 읽음
+      data = decodeData(d.z ? await unpack(d.z.toUint8Array()) : d);   // 압축본, 차이 저장본, 예전 형식 모두 읽음
       if (!data.tabs) data.tabs = [];
     }
     else { data = { tabs: [{ id: Date.now(), name: '탭 1', color: '#4363D8', boxes: [] }] }; await saveData(); }
@@ -236,13 +316,15 @@
     setStatus('saving', '💾 저장 중…');
     try {
       const plain = JSON.parse(JSON.stringify(data));
-      let payload = plain;
+      const encoded = encodeData(plain);   // 버전은 바뀐 줄만 저장
+      let payload = encoded;
       if (canCompress) {
-        const packed = await pack(plain);
-        // 압축을 풀어서 원본과 똑같은지 확인한 뒤에만 저장
-        const back = await unpack(packed);
-        if (JSON.stringify(back) !== JSON.stringify(plain)) throw new Error('압축 검증 실패 (저장 안 함)');
-        payload = { v: 2, z: Bytes.fromUint8Array(packed), updatedAt: Date.now() };
+        const packed = await pack(encoded);
+        // 압축과 차이 저장을 모두 풀어서 원본과 똑같은지 확인한 뒤에만 저장
+        const back = decodeData(await unpack(packed));
+        if (stableStringify(back) !== stableStringify(plain)) throw new Error('압축 검증 실패 (저장 안 함)');
+        if (packed.length > 1040000) throw new Error('용량 초과 ' + Math.round(packed.length / 1024) + 'KB (한도 약 1MB)');
+        payload = { v: 3, z: Bytes.fromUint8Array(packed), updatedAt: Date.now() };
         console.log('저장 크기:', packed.length.toLocaleString(), 'bytes (원본', JSON.stringify(plain).length.toLocaleString(), ')');
       }
       await Promise.race([
@@ -403,6 +485,33 @@
     backupBtn.title = '모든 메모를 파일(.json)로 내려받기';
     backupBtn.onclick = downloadBackup;
     container.appendChild(backupBtn);
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.id = 'restore-btn';
+    restoreBtn.textContent = '📤 복원';
+    restoreBtn.title = '백업 파일(.json)로 모든 메모 되돌리기';
+    restoreBtn.onclick = restoreBackup;
+    container.appendChild(restoreBtn);
+  }
+
+  // ===== 백업 파일로 복원 =====
+  function restoreBackup() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json,application/json';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      try {
+        const obj = decodeData(JSON.parse(await file.text()));
+        if (!obj || !Array.isArray(obj.tabs)) throw new Error('메모 백업 파일이 아닙니다.');
+        if (!confirm('현재 메모 전체를 이 백업 파일 내용으로 바꿉니다. 계속할까요?')) return;
+        data = { tabs: obj.tabs };
+        activeBigTab = 0;
+        renderAll();
+        await saveData();
+      } catch (e) { alert('복원 실패: ' + (e.message || e)); }
+    };
+    input.click();
   }
 
   function renderContent() {
